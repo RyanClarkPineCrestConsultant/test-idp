@@ -42,14 +42,12 @@ export default function Home() {
               type="email"
               name="email"
               placeholder="Email"
-              required
               className="border border-gray-300 rounded px-4 py-2"
             />
             <input
               type="password"
               name="password"
               placeholder="Password"
-              required
               className="border border-gray-300 rounded px-4 py-2"
             />
             <button
