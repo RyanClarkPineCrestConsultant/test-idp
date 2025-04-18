@@ -1,4 +1,4 @@
-import { parseSAMLResponse } from "../../../utils/samlUtils"; // Assume a utility function for parsing SAML
+import { parseString } from 'xml2js';
 
 export default function handler(req, res) {
   console.log("Incoming SSO request:", {
@@ -9,23 +9,23 @@ export default function handler(req, res) {
 
   if (req.method === "POST") {
     try {
-      const samlResponse = req.body.SAMLResponse; // Extract SAML response from the request body
-      console.log("Received SAML Response:", samlResponse); // Log the raw SAML response
+      parseString(req.body, (err, result) => {
+        if (err) {
+          console.error("Error parsing XML:", err); // Log the error
+          return res.status(500).json({ error: "Failed to parse XML" });
+        }
 
-      const parsedResponse = parseSAMLResponse(samlResponse); // Parse the SAML response
-      console.log("Parsed SAML Response:", parsedResponse); // Log the parsed SAML response
+        console.log("Parsed XML:", result); // Log the parsed XML
 
-      if (parsedResponse) {
-        res.status(200).json({ message: "SSO callback successful", user: parsedResponse });
-      } else {
-        res.status(400).json({ message: "Invalid SAML response" });
-      }
-    } catch (error) {
-      console.error("Error processing SAML response:", error); // Log the error
-      res.status(500).json({ message: "Internal server error", error: error.message });
+        // Process the parsed XML as needed
+        // For example, you can extract specific data from the result object
+
+        res.status(200).json({ message: "SSO request processed successfully" });
+      });
     }
-  } else {
-    console.warn("Unsupported request method:", req.method); // Log unsupported methods
-    res.status(405).json({ message: "Method not allowed" });
-  }
+    catch (error) {
+      console.error("Error processing SSO request:", error); // Log the error
+      res.status(500).json({ error: "Internal Server Error" });
+    } 
+  }  
 }
