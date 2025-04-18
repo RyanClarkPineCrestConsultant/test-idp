@@ -5,28 +5,19 @@ export default function handler(req, res) {
     method: req.method,
     headers: req.headers,
     body: req.body,
-  }); // Log the incoming request details
+    query: req.query, // Log query parameters for GET requests
+  }); // Log all incoming request details
 
   if (req.method === "POST" || req.method === "GET") {
     try {
-      const xmlData = req.method === "POST" ? req.body : req.query.SAMLResponse; // Handle XML from body or query
-      console.log("Received XML Data:", xmlData); // Log the raw XML data
+      console.log("Request Data:", {
+        body: req.body,
+        query: req.query,
+      }); // Log the body and query data for inspection
 
-      parseString(xmlData, (err, result) => {
-        if (err) {
-          console.error("Error parsing XML:", err); // Log the error
-          return res.status(500).json({ error: "Failed to parse XML" });
-        }
-
-        console.log("Parsed XML:", result); // Log the parsed XML
-
-        // Process the parsed XML as needed
-        // For example, you can extract specific data from the result object
-
-        res.status(200).json({ message: "SSO request processed successfully" });
-      });
+      res.status(200).json({ message: "Request data logged successfully" });
     } catch (error) {
-      console.error("Error processing SSO request:", error); // Log the error
+      console.error("Error processing request:", error); // Log any unexpected errors
       res.status(500).json({ error: "Internal Server Error" });
     }
   } else {
