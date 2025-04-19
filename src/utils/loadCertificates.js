@@ -10,11 +10,14 @@ const __dirname = path.dirname(__filename);
  * @returns {string} The private key as a string
  */
 export const loadPrivateKey = () => {
-  // Try to load from environment variable
+  // Try to load from environment variable first
   if (process.env.SAML_PRIVATE_KEY) {
     // Replace literal '\n' with actual newlines
+    console.log("Loading private key from environment variable");
     return process.env.SAML_PRIVATE_KEY.replace(/\\n/g, '\n');
   }
+  
+  console.log("Environment variable SAML_PRIVATE_KEY not found, trying file system");
   
   // Fall back to file system
   try {
@@ -33,10 +36,13 @@ export const loadPrivateKey = () => {
 export const loadCertificate = (stripHeaders = true) => {
   let cert;
   
-  // Try to load from environment variable
+  // Try to load from environment variable first
   if (process.env.SAML_CERTIFICATE) {
+    console.log("Loading certificate from environment variable");
     cert = process.env.SAML_CERTIFICATE.replace(/\\n/g, '\n');
   } else {
+    console.log("Environment variable SAML_CERTIFICATE not found, trying file system");
+    
     // Fall back to file system
     try {
       cert = fs.readFileSync(path.join(__dirname, "../../private/fon.pem")).toString();
