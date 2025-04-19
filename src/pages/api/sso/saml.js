@@ -26,10 +26,10 @@ const handler = async (req, res) => {
     }
 
     console.log("Request received with body:", req.body);
-    console.log("Environment variables available:", {
+    console.log("Environment variables check:", {
       SAML_ISSUER: process.env.SAML_ISSUER ? "Set" : "Not set",
-      SAML_PRIVATE_KEY: process.env.SAML_PRIVATE_KEY ? "Set" : "Not set",
-      SAML_CERTIFICATE: process.env.SAML_CERTIFICATE ? "Set" : "Not set"
+      SAML_PRIVATE_KEY: process.env.SAML_PRIVATE_KEY ? "Set (length: " + process.env.SAML_PRIVATE_KEY.length + ")" : "Not set",
+      SAML_CERTIFICATE: process.env.SAML_CERTIFICATE ? "Set (length: " + process.env.SAML_CERTIFICATE.length + ")" : "Not set",
     });
 
     // Parse form data
@@ -48,7 +48,14 @@ const handler = async (req, res) => {
         "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname": fields.lastName || "Clark",
       }
     });
-    console.log("SAML assertion generated successfully");
+
+    // Check if the response contains the X509Certificate tag
+    const hasX509 = response.includes("X509Certificate");
+    console.log("SAML assertion generated successfully, contains X509Certificate:", hasX509);
+    
+    if (!hasX509) {
+      console.error("WARNING: X509Certificate not found in SAML response!");
+    }
 
     console.log("Generated SAML Assertion XML:", response);
 
