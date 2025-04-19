@@ -1,9 +1,5 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "framework": "nextjs",
-  "env": {
-    "SAML_PRIVATE_KEY": "@SAML_PRIVATE_KEY",
-    "SAML_CERTIFICATE": "@SAML_CERTIFICATE"
-  }
+  "framework": "nextjs"
 }
