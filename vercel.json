@@ -3,7 +3,7 @@
   "outputDirectory": ".next",
   "framework": "nextjs",
   "env": {
-    "SAML_PRIVATE_KEY": "@saml_private_key",
-    "SAML_CERTIFICATE": "@saml_certificate"
+    "SAML_PRIVATE_KEY": "@SAML_PRIVATE_KEY",
+    "SAML_CERTIFICATE": "@SAML_CERTIFICATE"
   }
 }
