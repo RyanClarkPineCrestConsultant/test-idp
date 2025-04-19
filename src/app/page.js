@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
+
 export default function Home() {
   console.log("Rendering Home component"); // Debug log to confirm rendering
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
@@ -12,11 +13,19 @@ export default function Home() {
         body: formData,
       });
 
+      // Log the response status and headers
+      console.log("Response Status:", response.status);
+      console.log("Response Headers:", [...response.headers.entries()]);
+
       if (!response.ok) {
         throw new Error(`API error: ${response.statusText}`);
       }
 
       const html = await response.text();
+
+      // Log the returned SAML assertion HTML
+      console.log("SAML Assertion Response:", html);
+
       const newWindow = window.open();
       newWindow.document.write(html);
       newWindow.document.close();
