@@ -1,21 +1,10 @@
 import { generateSAMLAssertion } from '../../../utils/generateSAMLAssertion';
-import formidable from 'formidable';
 
-// Disable the default body parser to handle form data
+// Enable the default body parser instead of using formidable
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: true, // Change to true to use the built-in parser
   },
-};
-
-const parseForm = (req) => {
-  return new Promise((resolve, reject) => {
-    const form = new formidable.IncomingForm();
-    form.parse(req, (err, fields, files) => {
-      if (err) return reject(err);
-      resolve({ fields, files });
-    });
-  });
 };
 
 const handler = async (req, res) => {
@@ -35,8 +24,8 @@ const handler = async (req, res) => {
       SAML_CERTIFICATE: process.env.SAML_CERTIFICATE ? "Set (length: " + process.env.SAML_CERTIFICATE.length + ")" : "Not set",
     });
 
-    // Parse form data
-    const { fields } = await parseForm(req);
+    // Get fields directly from req.body instead of using formidable
+    const fields = req.body;
     console.log("Request received with fields:", fields);
 
     // Extract email from form data (with fallback)
@@ -69,18 +58,9 @@ const handler = async (req, res) => {
     console.log(base64Response);
     console.log("\n\n===================================Base64 ========================================\n\n");
 
-    const htmlResponse = `
-    <html>
-      <body onload="document.forms[0].submit()">
-        <form method="POST" action="https://itest1.ease.com/v2/sso/saml2">
-          <input type="hidden" name="SAMLResponse" value="${base64Response}" />
-        </form>
-      </body>
-    </html>
-    `;
-
-    res.setHeader('Content-Type', 'text/html');
-    res.send(htmlResponse);
+    // Return just the base64 encoded response as text instead of HTML
+    res.setHeader('Content-Type', 'text/plain');
+    res.send(base64Response);
   } catch (error) {
     console.error("Error in SAML handler:", error);
     // More verbose error logging

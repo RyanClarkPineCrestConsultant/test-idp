@@ -1,9 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [samlResponse, setSamlResponse] = useState("");
+  
   console.log("Rendering Home component"); // Debug log to confirm rendering
+  
+  // Modified useEffect to open in a new window
+  useEffect(() => {
+    if (samlResponse) {
+      console.log("Auto-submitting SAML form");
+      const form = document.getElementById("samlForm");
+      form.addEventListener("submit", () => {
+        console.log("Form submitted to SP");
+      });
+      form.submit();
+    }
+  }, [samlResponse]);
+  
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
@@ -21,14 +36,13 @@ export default function Home() {
         throw new Error(`API error: ${response.statusText}`);
       }
 
-      const html = await response.text();
+      const responseText = await response.text();
 
-      // Log the returned SAML assertion HTML
-      console.log("SAML Assertion Response:", html);
-
-      const newWindow = window.open();
-      newWindow.document.write(html);
-      newWindow.document.close();
+      // Log the returned SAML assertion
+      console.log("SAML Assertion Response:", responseText);
+      
+      // Set the SAML response in the state
+      setSamlResponse(responseText);
     } catch (error) {
       console.error("Error during form submission:", error);
       alert("An error occurred. Please try again.");
@@ -65,6 +79,25 @@ export default function Home() {
               Submit
             </button>
           </form>
+          
+          {samlResponse && (
+            <div className="mt-8 w-full max-w-lg">
+              <h2 className="text-2xl font-bold mb-4">Processing SSO login...</h2>
+              <form 
+                id="samlForm" 
+                action="https://itest1.ease.com/v2/sso/saml2" 
+                method="POST" 
+                target="_blank" 
+                style={{display: 'none'}}
+              >
+                <input
+                  type="hidden"
+                  name="SAMLResponse"
+                  value={samlResponse}
+                />
+              </form>
+            </div>
+          )}
         </main>
       </div>
     </div>
