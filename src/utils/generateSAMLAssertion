@@ -14,7 +14,7 @@ const customAttributes = {
 
 export const generateSAMLAssertion = ({
   destination = "https://itest1.ease.com/v2/sso/saml2", // Remove trailing slash
-  issuer = process.env.SAML_ISSUER || "urn:http://192.168.1.102", // Replace with SP’s expected issuer
+  issuer = "https://v0-new-project-nuvdt4083v6.vercel.app", // Replace with SP’s expected issuer
   nameId = "ryan.clark+1@pinecrestconsulting.com",
   nameIdFormat = "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
   attributes = customAttributes,

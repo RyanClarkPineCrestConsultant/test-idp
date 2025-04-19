@@ -27,7 +27,6 @@ const handler = async (req, res) => {
 
     console.log("Request received with body:", req.body);
     console.log("Environment variables check:", {
-      SAML_ISSUER: process.env.SAML_ISSUER ? "Set" : "Not set",
       SAML_PRIVATE_KEY: process.env.SAML_PRIVATE_KEY ? "Set (length: " + process.env.SAML_PRIVATE_KEY.length + ")" : "Not set",
       SAML_CERTIFICATE: process.env.SAML_CERTIFICATE ? "Set (length: " + process.env.SAML_CERTIFICATE.length + ")" : "Not set",
     });
