@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "env": {
+    "SAML_ISSUER": "@saml_issuer",
+    "SAML_PRIVATE_KEY": "@saml_private_key",
+    "SAML_CERTIFICATE": "@saml_certificate"
+  }
+}

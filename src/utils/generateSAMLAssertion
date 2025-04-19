@@ -1,6 +1,6 @@
 import { create } from "xmlbuilder2";
 import { SignedXml } from "xml-crypto";
-import fs from "fs";
+import { loadPrivateKey, loadCertificate } from "./loadCertificates.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -14,7 +14,7 @@ const customAttributes = {
 
 export const generateSAMLAssertion = ({
   destination = "https://itest1.ease.com/v2/sso/saml2", // Remove trailing slash
-  issuer = "https://v0-new-project-nuvdt4083v6.vercel.app", // Replace with SP’s expected issuer
+  issuer = process.env.SAML_ISSUER || "urn:http://192.168.1.102", // Replace with SP’s expected issuer
   nameId = "ryan.clark+1@pinecrestconsulting.com",
   nameIdFormat = "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
   attributes = customAttributes,
@@ -120,16 +120,8 @@ export const generateSAMLAssertion = ({
 
   const unsignedXml = doc.end({ prettyPrint: false });
 
-  const privateKey = fs.readFileSync(
-    path.join(__dirname, "../../private/pk.pem"),
-    "utf-8",
-  );
-  const cert = fs
-    .readFileSync(path.join(__dirname, "../../private/fon.pem"))
-    .toString()
-    .replace(/-----BEGIN CERTIFICATE-----/, "")
-    .replace(/-----END CERTIFICATE-----/, "")
-    .replace(/\n/g, "");
+  const privateKey = loadPrivateKey();
+  const cert = loadCertificate();
 
   const sig = new SignedXml({
     privateKey: privateKey,
