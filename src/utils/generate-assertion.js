@@ -1,30 +1,26 @@
 import { create } from "xmlbuilder2";
 import { SignedXml } from "xml-crypto";
-import { loadPrivateKey, loadCertificate } from "./loadCertificates.js";
+import crypto from "crypto";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const customAttributes = {
-  "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname": "Ryan",
-  "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname": "Clark",
-};
-
 export const generateSAMLAssertion = ({
-  destination = "https://itest1.ease.com/v2/sso/saml2", // Remove trailing slash
-  issuer = "https://v0-new-project-nuvdt4083v6.vercel.app", // Replace with SP’s expected issuer
-  nameId = "ryan.clark+1@pinecrestconsulting.com",
-  nameIdFormat = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified",
-  attributes = customAttributes,
+  destination,
+  issuer,
+  nameId,
+  attributes,
 }) => {
   const issueInstant = new Date().toISOString();
-  const notOnOrAfter = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-
+  const notOnOrAfter = new Date(Date.now() + 5 * 60_000).toISOString();
   const responseId = `_${crypto.randomUUID().replace(/-/g, "")}`;
   const assertionId = `_${crypto.randomUUID().replace(/-/g, "")}`;
   const sessionIndex = `_session_${crypto.randomUUID().replace(/-/g, "")}`;
+
+  /* ───────────────────────── XML BUILD ───────────────────────── */
 
   const doc = create({ version: "1.0", encoding: "UTF-8" })
     .ele("samlp:Response", {
@@ -45,21 +41,19 @@ export const generateSAMLAssertion = ({
       Value: "urn:oasis:names:tc:SAML:2.0:status:Success",
     })
     .up()
-    .up()
+    .up() // </Status> </StatusCode>
     .ele("saml:Assertion", {
-      "xmlns:saml": "urn:oasis:names:tc:SAML:2.0:assertion",
-      "xmlns:xs": "http://www.w3.org/2001/XMLSchema",
-      "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
       ID: assertionId,
       Version: "2.0",
       IssueInstant: issueInstant,
     })
     .ele("saml:Issuer")
     .txt(issuer)
-    .up()
+    .up() // <Issuer> (Signature will be injected *after* this node)
+
     .ele("saml:Subject")
     .ele("saml:NameID", {
-      Format: nameIdFormat,
+      Format: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
     })
     .txt(nameId)
     .up()
@@ -72,43 +66,44 @@ export const generateSAMLAssertion = ({
     })
     .up()
     .up()
-    .up()
+    .up() // </Subject>
+
     .ele("saml:Conditions", {
       NotBefore: issueInstant,
       NotOnOrAfter: notOnOrAfter,
     })
+    .ele("saml:AudienceRestriction")
+    .ele("saml:Audience")
+    .txt(destination)
     .up()
+    .up()
+    .up()
+
     .ele("saml:AuthnStatement", {
       AuthnInstant: issueInstant,
       SessionIndex: sessionIndex,
+      SessionNotOnOrAfter: notOnOrAfter,
     })
     .ele("saml:AuthnContext")
     .ele("saml:AuthnContextClassRef")
     .txt("urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified")
     .up()
     .up()
-    .up();
+    .up(); // </AuthnStatement>
 
-  const attributeStatement = doc.ele("saml:AttributeStatement", {
-    "xmlns:xs": "http://www.w3.org/2001/XMLSchema",
-    "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-  });
+  /* ────────────── Attributes (NameFormat fix) ────────────── */
 
-  const defaultAttributes = {
-    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier": nameId,
-    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": nameId,
-    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": nameId,
-    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn": nameId,
-    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameID": nameId,
-  };
+  const attrStatement = doc.ele("saml:AttributeStatement");
 
-  const mergedAttributes = { ...defaultAttributes, ...attributes };
-
-  for (const [name, value] of Object.entries(mergedAttributes)) {
-    attributeStatement
+  for (const [rawName, value] of Object.entries(attributes)) {
+    const isUri = /^https?:\/\//.test(rawName);
+    attrStatement
       .ele("saml:Attribute", {
-        Name: name,
-        NameFormat: "urn:oasis:names:tc:SAML:2.0:attrname-format:uri",
+        Name: rawName,
+        NameFormat: isUri
+          ? "urn:oasis:names:tc:SAML:2.0:attrname-format:uri"
+          : "urn:oasis:names:tc:SAML:2.0:attrname-format:basic",
+        FriendlyName: rawName.split(/[/.]/).pop(), // nice to have
       })
       .ele("saml:AttributeValue", {
         "xsi:type": typeof value === "boolean" ? "xs:boolean" : "xs:string",
@@ -120,47 +115,51 @@ export const generateSAMLAssertion = ({
 
   const unsignedXml = doc.end({ prettyPrint: false });
 
-  console.log("Loading private key and certificate...");
-  const privateKey = loadPrivateKey();
-  const cert = loadCertificate();
-  
-  console.log("Certificate loaded, first 20 chars:", cert.substring(0, 20) + "...");
-  console.log("Certificate length:", cert.length);
+  /* ────────────────────────── SIGN ────────────────────────── */
+
+  const privateKey = fs.readFileSync(
+    path.join(__dirname, "../../private/pk.pem"),
+    "utf8",
+  );
+  const cert = fs
+    .readFileSync(
+      path.join(__dirname, "../../private/fon.pem"),
+      "utf8",
+    )
+    .replace(/-----BEGIN CERTIFICATE-----\s*/g, "")
+    .replace(/-----END CERTIFICATE-----\s*/g, "")
+    .replace(/\r?\n|\r/g, "");
 
   const sig = new SignedXml({
-    privateKey: privateKey,
+    privateKey,
     canonicalizationAlgorithm: "http://www.w3.org/2001/10/xml-exc-c14n#",
     signatureAlgorithm: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
-    getKeyInfoContent: () => {
-      const x509Data = `<X509Data><X509Certificate>${cert}</X509Certificate></X509Data>`;
-      console.log("X509Data length:", x509Data.length);
-      return x509Data;
-    },
-    idAttribute: "ID",
+    getKeyInfoContent: () =>
+      `<X509Data><X509Certificate>${cert}</X509Certificate></X509Data>`,
   });
 
   sig.addReference({
-    xpath: `//*[local-name(.)='Assertion']`,
+    xpath: `//*[@ID="${assertionId}"]`,
     transforms: [
       "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
       "http://www.w3.org/2001/10/xml-exc-c14n#",
     ],
     digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256",
-    id: assertionId,
   });
 
   sig.computeSignature(unsignedXml, {
     location: {
-      reference: `//*[local-name(.)='Issuer'][ancestor::*[local-name(.)='Assertion']]`,
-      action: "after",
-    },
-    prefix: "ds",
-    attrs: {
-      "xmlns:ds": "http://www.w3.org/2000/09/xmldsig#",
+      reference:
+        "//*[local-name()='Issuer' and parent::*[local-name()='Assertion']]",
+      action: "after", // place <Signature> right after <Issuer>
     },
   });
 
   const signedXml = sig.getSignedXml();
 
-  return signedXml;
+  return {
+    base64: Buffer.from(signedXml, "utf8").toString("base64"), // explicit UTF‑8
+    raw: signedXml,
+    x509: cert,
+  };
 };

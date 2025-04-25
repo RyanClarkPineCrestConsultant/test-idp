@@ -3,22 +3,8 @@
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  const [samlResponse, setSamlResponse] = useState("");
-  
-  console.log("Rendering Home component"); // Debug log to confirm rendering
-  
-  // Modified useEffect to open in a new window
-  useEffect(() => {
-    if (samlResponse) {
-      console.log("Auto-submitting SAML form");
-      const form = document.getElementById("samlForm");
-      form.addEventListener("submit", () => {
-        console.log("Form submitted to SP");
-      });
-      form.submit();
-    }
-  }, [samlResponse]);
-  
+  const [samlResponse, setSamlResponse] = useState(null); 
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
@@ -27,27 +13,16 @@ export default function Home() {
         method: "POST",
         body: formData,
       });
-
-      // Log the response status and headers
-      console.log("Response Status:", response.status);
-      console.log("Response Headers:", [...response.headers.entries()]);
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
-      }
-
-      const responseText = await response.text();
-
-      // Log the returned SAML assertion
-      console.log("SAML Assertion Response:", responseText);
-      
-      // Set the SAML response in the state
-      setSamlResponse(responseText);
+      if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+      const responseData = await response.json(); // Parse as JSON instead of text
+      console.log("SAML Response:", responseData);
+      setSamlResponse(responseData);
     } catch (error) {
       console.error("Error during form submission:", error);
       alert("An error occurred. Please try again.");
     }
   };
+  // console.log("BLOO:", samlResponse?.base64);
 
   return (
     <div>
@@ -79,23 +54,14 @@ export default function Home() {
               Submit
             </button>
           </form>
-          
           {samlResponse && (
-            <div className="mt-8 w-full max-w-lg">
-              <h2 className="text-2xl font-bold mb-4">Processing SSO login...</h2>
-              <form 
-                id="samlForm" 
-                action="https://itest1.ease.com/v2/sso/saml2" 
-                method="POST" 
-                target="_blank" 
-                style={{display: 'none'}}
-              >
-                <input
-                  type="hidden"
-                  name="SAMLResponse"
-                  value={samlResponse}
-                />
+            <div className="mt-4 p-4 border border-gray-300 rounded">
+              <form method="POST" action="https://itest1.ease.com/v2/sso/saml2">
+                <input type="hidden" name="SAMLResponse" value={samlResponse.base64} />
+                <button type="submit" className="bg-blue-500 text-white rounded px-4 py-2 hover:bg-blue-600">Submit SAML Assertion</button>
               </form>
+              <h2>X.509 Certificate</h2>
+              <pre>{samlResponse.x509.replace(/(.{64})/g, "$1\n")}</pre>
             </div>
           )}
         </main>
