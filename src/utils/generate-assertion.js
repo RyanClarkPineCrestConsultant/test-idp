@@ -117,25 +117,49 @@ export const generateSAMLAssertion = ({
 
   /* ────────────────────────── SIGN ────────────────────────── */
 
-  const privateKey = fs.readFileSync(
-    path.join(__dirname, "../../private/pk.pem"),
-    "utf8",
-  );
-  const cert = fs
-    .readFileSync(
-      path.join(__dirname, "../../private/fon.pem"),
-      "utf8",
-    )
-    .replace(/-----BEGIN CERTIFICATE-----\s*/g, "")
-    .replace(/-----END CERTIFICATE-----\s*/g, "")
-    .replace(/\r?\n|\r/g, "");
+  let privateKey = process.env.SAML_PRIVATE_KEY
+  let cert = process.env.SAML_CERTIFICATE;
+  // Handle escaped newlines from Vercel environment
+  if (privateKey && privateKey.includes('\\n')) {
+    privateKey = privateKey.replace(/\\n/g, '\n');
+  }
+
+  if (cert && cert.includes('\\n')) {
+    cert = cert.replace(/\\n/g, '\n');
+  }
+
+  // Extract certificate content for the signature
+  const certForSignature = cert
+    .replace(/-----BEGIN CERTIFICATE-----\s*/g, '')
+    .replace(/-----END CERTIFICATE-----\s*/g, '')
+    .replace(/\r?\n|\r/g, '');
+
+  // try {
+  //   // Try to load from environment variable
+  //   privateKey = fs.readFileSync(
+  //     path.join(__dirname, "../../private/pk.pem"),
+  //     "utf8",
+  //   );
+  //   cert = fs
+  //   .readFileSync(
+  //     path.join(__dirname, "../../private/fon.pem"),
+  //     "utf8",
+  //   )
+  //   .replace(/-----BEGIN CERTIFICATE-----\s*/g, "")
+  //   .replace(/-----END CERTIFICATE-----\s*/g, "")
+  //   .replace(/\r?\n|\r/g, "");
+  // }
+  // catch (error) {
+  //   console.error("Error reading private key from file:", error);
+  // }
+  console.log(privateKey, certForSignature);
 
   const sig = new SignedXml({
     privateKey,
     canonicalizationAlgorithm: "http://www.w3.org/2001/10/xml-exc-c14n#",
     signatureAlgorithm: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
     getKeyInfoContent: () =>
-      `<X509Data><X509Certificate>${cert}</X509Certificate></X509Data>`,
+      `<X509Data><X509Certificate>${certForSignature}</X509Certificate></X509Data>`,
   });
 
   sig.addReference({
