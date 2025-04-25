@@ -9,13 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.796.0",
+    "@aws-sdk/client-secrets-manager": "^3.796.0",
     "@boxyhq/saml-jackson": "^1.45.0",
+    "formidable": "^2.1.1",
     "next": "15.3.1",
+    "openid-client": "^6.4.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "xml-crypto": "^6.1.0",
-    "xmlbuilder2": "^3.1.1",
-    "formidable": "^2.1.1"
+    "xmlbuilder2": "^3.1.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
